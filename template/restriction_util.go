@@ -10,9 +10,9 @@ import (
 
 // regexps for validation of unprocessed (in string form) data types
 var (
-	int_re      = regexp.MustCompile(`^\d+$`).MatchString
-	float_re    = regexp.MustCompile(`^\d+\.\d+$`).MatchString
-	datetime_re = regexp.MustCompile(`^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$`).MatchString
+	intRe      = regexp.MustCompile(`^\d+$`).MatchString
+	floatRe    = regexp.MustCompile(`^\d+\.\d+$`).MatchString
+	datetimeRe = regexp.MustCompile(`^\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\dZ$`).MatchString
 	// string and bool data types don't need regexp
 )
 
@@ -33,29 +33,29 @@ type mutationTool struct {
 
 // List of baked mutationTool-structs for "simple" data types
 var (
-	int_tool = mutationTool{
-		check: func(v string) bool { return int_re(v) },
+	intTool = mutationTool{
+		check: func(v string) bool { return intRe(v) },
 		mutate: func(v string) (interface{}, error) {
 			i, _ := strconv.Atoi(v)
 			// ignores error cus check-func validates that v is int
 			return i, nil
 		},
 	}
-	float_tool = mutationTool{
-		check: func(v string) bool { return float_re(v) },
+	floatTool = mutationTool{
+		check: func(v string) bool { return floatRe(v) },
 		mutate: func(v string) (interface{}, error) {
 			f, _ := strconv.ParseFloat(v, 64)
 			// ignores error cus check-func validates that v is float
 			return f, nil
 		},
 	}
-	string_tool = mutationTool{
+	stringTool = mutationTool{
 		check: func(v string) bool { return true },
 		mutate: func(v string) (interface{}, error) {
 			return v, nil // v already is string
 		},
 	}
-	bool_tool = mutationTool{
+	boolTool = mutationTool{
 		check: func(v string) bool { return v == "true" || v == "false" },
 		mutate: func(v string) (interface{}, error) {
 			b, _ := strconv.ParseBool(v)
@@ -63,8 +63,8 @@ var (
 			return b, nil
 		},
 	}
-	datetime_tool = mutationTool{
-		check: func(v string) bool { return datetime_re(v) },
+	datetimeTool = mutationTool{
+		check: func(v string) bool { return datetimeRe(v) },
 		mutate: func(v string) (interface{}, error) {
 			d, e := time.Parse(time.RFC3339, v)
 			if e != nil {
@@ -83,30 +83,30 @@ func getMutationTool(t string, rt TRestrictionType) mutationTool {
 
 	switch typ {
 	case "int":
-		return int_tool
+		return intTool
 	case "float":
-		return float_tool
+		return floatTool
 	case "string":
-		return string_tool
+		return stringTool
 	case "bool":
-		return bool_tool
+		return boolTool
 	case "datetime":
-		return datetime_tool
+		return datetimeTool
 	case "array":
 		return getMutationTool(typs[1], 0)
 	case "map":
-		var search_typ string
+		var searchTyp string
 		switch rt {
 		case TValue:
-			search_typ = typs[2]
+			searchTyp = typs[2]
 		case TRegExp:
-			search_typ = typs[2]
+			searchTyp = typs[2]
 		case TKeyValue:
-			search_typ = typs[1]
+			searchTyp = typs[1]
 		case TKeyRegExp:
-			search_typ = typs[1]
+			searchTyp = typs[1]
 		}
-		return getMutationTool(search_typ, 0)
+		return getMutationTool(searchTyp, 0)
 	}
 	return mutationTool{}
 }
@@ -195,18 +195,18 @@ func ToDataType(t string) (TypeBuffer, error) {
 			return TypeBuffer{}, fmt.Errorf("data type \"map\" can't has more than 2 subtypes - 1 for keys and 1 for values")
 		}
 		kty, vty := toSimpleDataType(typs[1]), toSimpleDataType(typs[2])
-		e_text := ""
+		eText := ""
 		if kty == TNull {
-			e_text += fmt.Sprintf("data type \"map\" has wrong key data subtype %q", typs[1])
+			eText += fmt.Sprintf("data type \"map\" has wrong key data subtype %q", typs[1])
 		}
 		if vty == TNull {
 			if kty == TNull {
-				e_text += "; "
+				eText += "; "
 			}
-			e_text += fmt.Sprintf("\"map\" data type has wrong value data subtype %q", typs[2])
+			eText += fmt.Sprintf("\"map\" data type has wrong value data subtype %q", typs[2])
 		}
-		if e_text != "" {
-			return TypeBuffer{}, fmt.Errorf(e_text)
+		if eText != "" {
+			return TypeBuffer{}, fmt.Errorf(eText)
 		}
 		return TypeBuffer{
 			T:  TMap,

@@ -320,7 +320,7 @@ func (c *context) setNodeLabel(n, l string) {
 		c.nls = make(map[string][]string)
 	}
 	if c.nls[n] == nil {
-		c.nls[n] = make([]string, 0)
+		c.nls[n] = make([]string, 0, 1)
 	}
 	c.nls[n] = append(c.nls[n], l)
 }

@@ -9,35 +9,35 @@ import (
 	"time"
 )
 
-// Compares v_keys values properties keys with t_keys template properties keys
-// and returns "valid" map of keys (where v_keys keys is mapped to t_keys keys)
+// Compares vKeys values properties keys with tKeys template properties keys
+// and returns "valid" map of keys (where vKeys keys is mapped to tKeys keys)
 // and nil if doesn't match any contradictions between them
-func evaluatePropertyKeys(t_keys []string, v_keys []string) (map[string]string, error) {
-	valid_keys := make(map[string]string)
+func evaluatePropertyKeys(tKeys []string, vKeys []string) (map[string]string, error) {
+	validKeys := make(map[string]string)
 
-	extra_keys_lowcase := make(map[string]string)
-	for _, k := range t_keys {
-		extra_keys_lowcase[strings.ToLower(k)] = k
+	extraKeysLowcase := make(map[string]string)
+	for _, k := range tKeys {
+		extraKeysLowcase[strings.ToLower(k)] = k
 	}
-	for _, k := range v_keys {
-		lowcase_template_key := strings.ToLower(k)
-		template_key, ok := extra_keys_lowcase[lowcase_template_key]
+	for _, k := range vKeys {
+		lowcaseTemplateKey := strings.ToLower(k)
+		templateKey, ok := extraKeysLowcase[lowcaseTemplateKey]
 		if !ok {
 			return nil, fmt.Errorf("validated entity has extra %q property", k)
 		} else {
-			valid_keys[k] = template_key
-			delete(extra_keys_lowcase, lowcase_template_key)
+			validKeys[k] = templateKey
+			delete(extraKeysLowcase, lowcaseTemplateKey)
 		}
 	}
-	if len(extra_keys_lowcase) != 0 {
-		missed_props := ""
-		for _, k := range extra_keys_lowcase {
-			missed_props += fmt.Sprintf("%q, ", k)
+	if len(extraKeysLowcase) != 0 {
+		missedProps := ""
+		for _, k := range extraKeysLowcase {
+			missedProps += fmt.Sprintf("%q, ", k)
 		}
-		missed_props = strings.TrimSuffix(missed_props, ", ")
-		return nil, fmt.Errorf("validated entity doesn't has %s properties", missed_props)
+		missedProps = strings.TrimSuffix(missedProps, ", ")
+		return nil, fmt.Errorf("validated entity doesn't has %s properties", missedProps)
 	}
-	return valid_keys, nil
+	return validKeys, nil
 }
 
 // Parses underlying data of p as property and validates it using tp as validator
@@ -262,34 +262,34 @@ func evaluatePropertyAsMap(tp TProperty, p interface{}) (bool, error) {
 // data firstly within type definition and then within v properties values;
 // thus this func can evaluate ONLY structs, maps and map-based custom types
 func (t TemplateHolder) searchUnknownTypeName(v reflect.Value) (*TNode, *TEdge) {
-	typ_name := v.Type().Name()
-	as_node := t.Nodes[typ_name]
-	as_edge := t.Edges[typ_name]
-	if as_node == nil && as_edge == nil {
+	typName := v.Type().Name()
+	asNode := t.Nodes[typName]
+	asEdge := t.Edges[typName]
+	if asNode == nil && asEdge == nil {
 		switch v.Kind() {
 		case reflect.Map:
 			for iter := v.MapRange(); iter.Next(); {
-				p_typ := iter.Value().String()
-				if as_node == nil {
-					as_node = t.Nodes[p_typ]
+				pTyp := iter.Value().String()
+				if asNode == nil {
+					asNode = t.Nodes[pTyp]
 				}
-				if as_edge == nil {
-					as_edge = t.Edges[p_typ]
+				if asEdge == nil {
+					asEdge = t.Edges[pTyp]
 				}
 			}
 		case reflect.Struct:
 			for i := 0; i < v.Type().NumField(); i++ {
-				p_typ := v.Field(i).String()
-				if as_node == nil {
-					as_node = t.Nodes[p_typ]
+				pTyp := v.Field(i).String()
+				if asNode == nil {
+					asNode = t.Nodes[pTyp]
 				}
-				if as_edge == nil {
-					as_edge = t.Edges[p_typ]
+				if asEdge == nil {
+					asEdge = t.Edges[pTyp]
 				}
 			}
 		}
 	}
-	return as_node, as_edge
+	return asNode, asEdge
 }
 
 // Tries to validate underlying data of v as map data type using t Node-struct
@@ -358,22 +358,22 @@ func validateUnknownStructAsEdge(t *TEdge, v reflect.Value) (bool, error) {
 // success; omit argument is used when v underlying data contains its own type name
 // as one the properties value and thus should be omitted - otherwise it can be ""
 func evaluateUnknownMapPropertyKeys(omit string, v reflect.Value, ps map[string]*TProperty) (map[string]string, error) {
-	v_keys := make([]string, 0)
+	vKeys := make([]string, 0)
 	for iter := v.MapRange(); iter.Next(); {
 		if omit == iter.Value().String() {
 			continue
 		}
-		v_keys = append(v_keys, iter.Key().String())
+		vKeys = append(vKeys, iter.Key().String())
 	}
-	p_keys := make([]string, 0)
+	pKeys := make([]string, 0, len(ps))
 	for k := range ps {
-		p_keys = append(p_keys, k)
+		pKeys = append(pKeys, k)
 	}
-	valid_keys, err := evaluatePropertyKeys(p_keys, v_keys)
+	validKeys, err := evaluatePropertyKeys(pKeys, vKeys)
 	if err != nil {
 		return nil, err
 	}
-	return valid_keys, nil
+	return validKeys, nil
 }
 
 // Parses and compares ps properties (as origin) and v underlying data (considered
@@ -382,24 +382,24 @@ func evaluateUnknownMapPropertyKeys(omit string, v reflect.Value, ps map[string]
 // omit argument is used when v underlying data contains its own type name as one the
 // properties value and thus should be omitted - otherwise it can be ""
 func evaluateUnknownStructPropertyKeys(omit string, v reflect.Value, ps map[string]*TProperty) (map[string]string, error) {
-	v_keys := make([]string, 0)
+	vKeys := make([]string, 0)
 	vt := v.Type()
 	for i := 0; i < vt.NumField(); i++ {
 		if omit == v.Field(i).String() {
 			continue
 		}
-		v_keys = append(v_keys, vt.Field(i).Name)
+		vKeys = append(vKeys, vt.Field(i).Name)
 	}
-	p_keys := make([]string, 0)
+	pKeys := make([]string, 0, len(ps))
 	for k := range ps {
-		p_keys = append(p_keys, k)
+		pKeys = append(pKeys, k)
 	}
 
-	valid_keys, err := evaluatePropertyKeys(p_keys, v_keys)
+	validKeys, err := evaluatePropertyKeys(pKeys, vKeys)
 	if err != nil {
 		return nil, err
 	}
-	return valid_keys, nil
+	return validKeys, nil
 }
 
 // Tries to validate v underlying data as map data type using ks "valid" keys and ps as

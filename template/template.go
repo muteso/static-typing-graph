@@ -28,23 +28,23 @@ func (t TemplateHolder) ValidateNode(n validation.Node) (bool, error) {
 		return false, fmt.Errorf("%q-node: there is no such node type in template", typ)
 	}
 
-	v_keys := n.GetKeys()
-	p_keys := make([]string, 0)
+	vKeys := n.GetKeys()
+	pKeys := make([]string, 0, len(node.Props))
 	for k := range node.Props {
-		p_keys = append(p_keys, k)
+		pKeys = append(pKeys, k)
 	}
-	if _, err := evaluatePropertyKeys(p_keys, v_keys); err != nil {
+	if _, err := evaluatePropertyKeys(pKeys, vKeys); err != nil {
 		return false, fmt.Errorf("%q-node: %s", typ, err.Error())
 	}
 
-	for _, k := range v_keys {
+	for _, k := range vKeys {
 		tp := node.Props[k]
 		p, _ := n.GetProp(k)
 
 		ok, err := evaluateProperty(*tp, p)
 		if !ok {
-			str_err := fmt.Sprintf("%q-node: %s", typ, err.Error())
-			return ok, fmt.Errorf(str_err)
+			strErr := fmt.Sprintf("%q-node: %s", typ, err.Error())
+			return ok, fmt.Errorf(strErr)
 		}
 	}
 	return true, nil
@@ -59,23 +59,23 @@ func (t TemplateHolder) ValidateEdge(e validation.Edge) (bool, error) {
 		return false, fmt.Errorf("%q-edge: there is no such edge type in template", typ)
 	}
 
-	v_keys := e.GetKeys()
-	p_keys := make([]string, 0)
+	vKeys := e.GetKeys()
+	pKeys := make([]string, 0, len(edge.Props))
 	for k := range edge.Props {
-		p_keys = append(p_keys, k)
+		pKeys = append(pKeys, k)
 	}
-	if _, err := evaluatePropertyKeys(p_keys, v_keys); err != nil {
+	if _, err := evaluatePropertyKeys(pKeys, vKeys); err != nil {
 		return false, fmt.Errorf("%q-edge: %s", typ, err.Error())
 	}
 
-	for _, k := range v_keys {
+	for _, k := range vKeys {
 		tp := edge.Props[k]
 		p, _ := e.GetProp(k)
 
 		ok, err := evaluateProperty(*tp, p)
 		if !ok {
-			str_err := fmt.Sprintf("%q-edge: %s", typ, err.Error())
-			return ok, fmt.Errorf(str_err)
+			strErr := fmt.Sprintf("%q-edge: %s", typ, err.Error())
+			return ok, fmt.Errorf(strErr)
 		}
 	}
 	return true, nil
@@ -106,38 +106,38 @@ func (t TemplateHolder) ValidateTriplet(tr validation.Triplet) (bool, error) {
 // data firstly within type definition and then within v properties values;
 // thus this func can evaluate ONLY structs, maps and map-based custom types
 func (t TemplateHolder) ValidateUnknown(v interface{}) (bool, error) {
-	ok_node, ok_edge := false, false
-	err_node, err_edge := fmt.Errorf("there is no such node type in template"), fmt.Errorf("there is no such edge type in template")
+	okNode, okEdge := false, false
+	errNode, errEdge := fmt.Errorf("there is no such node type in template"), fmt.Errorf("there is no such edge type in template")
 	val := reflect.ValueOf(v)
-	if as_node, as_edge := t.searchUnknownTypeName(val); as_node != nil || as_edge != nil {
+	if asNode, asEdge := t.searchUnknownTypeName(val); asNode != nil || asEdge != nil {
 		switch val.Kind() {
 		case reflect.Map:
-			if as_node != nil {
-				ok_node, err_node = validateUnknownMapAsNode(as_node, val)
+			if asNode != nil {
+				okNode, errNode = validateUnknownMapAsNode(asNode, val)
 			}
-			if as_edge != nil {
-				ok_edge, err_edge = validateUnknownMapAsEdge(as_edge, val)
+			if asEdge != nil {
+				okEdge, errEdge = validateUnknownMapAsEdge(asEdge, val)
 			}
 		case reflect.Struct:
-			if as_node != nil {
-				ok_node, err_node = validateUnknownStructAsNode(as_node, val)
+			if asNode != nil {
+				okNode, errNode = validateUnknownStructAsNode(asNode, val)
 			}
-			if as_edge != nil {
-				ok_edge, err_edge = validateUnknownStructAsEdge(as_edge, val)
+			if asEdge != nil {
+				okEdge, errEdge = validateUnknownStructAsEdge(asEdge, val)
 			}
 		default:
-			return false, fmt.Errorf("Unknown value: value can't be evaluated - it's not a struct, map or map-based type")
+			return false, fmt.Errorf("unknown value: value can't be evaluated - it's not a struct, map or map-based type")
 		}
 
-		if !ok_node && !ok_edge {
-			return false, fmt.Errorf("Unknown value: value had failed both validations: as node - %s; as edge - %s", err_node.Error(), err_edge.Error())
-		} else if ok_node {
-			return true, fmt.Errorf("Unknown value: value had been saccessfully validated as node")
-		} else if ok_edge {
-			return true, fmt.Errorf("Unknown value: value had been saccessfully validated as edge")
-		} else if ok_node && ok_edge {
-			return true, fmt.Errorf("Unknown value: value had been both saccessfully validated: and as node, and as edge")
+		if !okNode && !okEdge {
+			return false, fmt.Errorf("unknown value: value had failed both validations: as node - %s; as edge - %s", errNode.Error(), errEdge.Error())
+		} else if okNode {
+			return true, fmt.Errorf("unknown value: value had been saccessfully validated as node")
+		} else if okEdge {
+			return true, fmt.Errorf("unknown value: value had been saccessfully validated as edge")
+		} else if okNode && okEdge {
+			return true, fmt.Errorf("unknown value: value had been both saccessfully validated: and as node, and as edge")
 		}
 	}
-	return false, fmt.Errorf("Unknown value: values type name doesn't match any of the templates nodes or edges")
+	return false, fmt.Errorf("unknown value: values type name doesn't match any of the templates nodes or edges")
 }

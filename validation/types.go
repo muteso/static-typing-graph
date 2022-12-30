@@ -55,7 +55,7 @@ func (h entityHolder) GetEdgeType() string {
 // Returns slice of property keys of entity; returns empty slice if there
 // is no properties
 func (h entityHolder) GetKeys() []string {
-	res := make([]string, 0)
+	res := make([]string, 0, len(h.props))
 	for k := range h.props {
 		res = append(res, k)
 	}
@@ -100,3 +100,42 @@ func (t tripletHolder) Edge() Edge {
 func (t tripletHolder) Subj() Node {
 	return t.s
 }
+
+// // refactor
+// type Graph interface {
+//	GetNode() error
+// 	AddNode() error
+// 	UpdateNode() error
+// 	DeleteNode() error
+// }
+
+// type graphHolder struct {
+// 	graph []*graphNode
+// 	pass  []*graphNode
+// }
+
+// type graphNode struct {
+// 	parentEdge *Edge
+// 	node       *Node
+// 	childs     []*Node
+// }
+
+// func (g graphHolder) GetNode() error {
+// 	return nil
+// }
+
+// func (g graphHolder) AddNode() error {
+// 	return nil
+// }
+
+// func (g graphHolder) ConnectNode() error {
+// 	return nil
+// }
+
+// func (g graphHolder) UpdateNode() error {
+// 	return nil
+// }
+
+// func (g graphHolder) DeleteNode() error {
+// 	return nil
+// }

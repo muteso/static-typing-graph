@@ -259,18 +259,18 @@ func (bn bNode) enrichByLabels(c *context) {
 				for ek := range c.labelConnsByMainSubj(mk, sk) {
 					conn := c.labelConn(mk, sk, ek)
 					m, e := actual.Typ, conn.edge.Typ
-					for _, s_node := range conn.subj.nodes {
-						s := s_node.Typ
+					for _, sNode := range conn.subj.nodes {
+						s := sNode.Typ
 						if c.nodeConn(m, s, e) == nil {
 							// protects nodes connections from overwriting by labels connections
-							n_conn := &template.TConnection{
+							nConn := &template.TConnection{
 								Main: actual,
 								Edge: conn.edge,
-								Subj: s_node,
+								Subj: sNode,
 								Min:  conn.min,
 								Max:  conn.max,
 							}
-							c.setNodeConn(m, s, e, n_conn)
+							c.setNodeConn(m, s, e, nConn)
 						}
 					}
 				}
@@ -312,14 +312,19 @@ func (bn bNode) mapConnections(c *context) {
 // executed), otherwise it will panic - "invalid memory address or nil
 // pointer dereference"
 func (bp bProperty) toActual(c *context) {
-	entity_type := bp.nesting[len(bp.nesting)-4]
+	entityType := bp.nesting[len(bp.nesting)-4]
 	entity := bp.nesting[len(bp.nesting)-3]
 	name := bp.nesting[len(bp.nesting)-1]
 	actual := &template.TProperty{
-		Key:    name,
-		Restrs: make([]*template.TRestriction, 0),
+		Key: name,
+		Restrs: make([]*template.TRestriction, 0,
+			len(bp.BufRestrs.BufValueRestr)+
+				len(bp.BufRestrs.BufKeyValueRestr)+
+				len(bp.BufRestrs.BufRegexpRestr)+
+				len(bp.BufRestrs.BufKeyRegexpRestr),
+		),
 	}
-	switch entity_type {
+	switch entityType {
 	case "nodes":
 		c.setNodeProp(entity, name, actual)
 	case "edges":
@@ -357,36 +362,38 @@ func (bp bProperty) toActual(c *context) {
 // executed), otherwise it will panic - "invalid memory address or nil
 // pointer dereference"
 func (br bRestrictions) toActual(c *context) {
-	entity_type := br.nesting[len(br.nesting)-5]
+	entityType := br.nesting[len(br.nesting)-5]
 	entity := br.nesting[len(br.nesting)-4]
 	prop := br.nesting[len(br.nesting)-2]
 
 	var p *template.TProperty
-	switch entity_type {
+	var typs template.TypeBuffer
+	switch entityType {
 	case "nodes":
-		entity_type = "node"
+		entityType = "node"
 		p = c.nodeProp(entity, prop)
 	case "edges":
-		entity_type = "edge"
+		entityType = "edge"
 		p = c.edgeProp(entity, prop)
 	case "labels":
-		entity_type = "label"
+		entityType = "label"
 		p = c.labelProp(entity, prop)
 	}
 	if p == nil {
 		e := parseError{
 			br.nesting.String(),
-			fmt.Sprintf("%s %q has undefined property %q to write restriction to it", entity, entity_type, prop),
+			fmt.Sprintf("%s %q has undefined property %q to write restriction to it", entity, entityType, prop),
 		}
 		c.appendErr(e)
-	}
-	typs := template.TypeBuffer{
-		T:  p.Typ,
-		Vt: p.ValTyp,
-		Kt: p.KeyTyp,
+	} else {
+		typs = template.TypeBuffer{
+			T:  p.Typ,
+			Vt: p.ValTyp,
+			Kt: p.KeyTyp,
+		}
 	}
 
-	buf_val_restrs := make([]*template.TRestriction, 0)
+	bufValRestrs := make([]*template.TRestriction, 0, len(br.BufValueRestr))
 	// restrictions in this slice will be examined on contradictions with regexp-restrictions
 	for i, v := range br.BufValueRestr {
 		r, err := template.MutateRestr(typs, template.TValue, v)
@@ -397,7 +404,7 @@ func (br bRestrictions) toActual(c *context) {
 			}
 			c.appendErr(e)
 		}
-		buf_val_restrs = append(buf_val_restrs, r)
+		bufValRestrs = append(bufValRestrs, r)
 	}
 	for i, v := range br.BufRegexpRestr {
 		r, err := template.MutateRestr(typs, template.TRegExp, v)
@@ -408,7 +415,7 @@ func (br bRestrictions) toActual(c *context) {
 			}
 			c.appendErr(e)
 		}
-		if ok, err := template.CheckRestrContradiction(r, buf_val_restrs); !ok && err != nil {
+		if ok, err := template.CheckRestrContradiction(r, bufValRestrs); !ok && err != nil {
 			e := parseError{
 				append(br.nesting, "regexps", strconv.Itoa(i+1)).String(),
 				err.Error(),
@@ -418,7 +425,7 @@ func (br bRestrictions) toActual(c *context) {
 		p.Restrs = append(p.Restrs, r)
 
 	}
-	buf_key_restrs := make([]*template.TRestriction, 0)
+	bufKeyRestrs := make([]*template.TRestriction, 0, len(br.BufKeyValueRestr))
 	// restrictions in this slice will be examined on contradictions with regexp-restrictions
 	for i, v := range br.BufKeyValueRestr {
 		r, err := template.MutateRestr(typs, template.TKeyValue, v)
@@ -429,7 +436,7 @@ func (br bRestrictions) toActual(c *context) {
 			}
 			c.appendErr(e)
 		}
-		buf_key_restrs = append(buf_key_restrs, r)
+		bufKeyRestrs = append(bufKeyRestrs, r)
 
 	}
 	for i, v := range br.BufKeyRegexpRestr {
@@ -441,7 +448,7 @@ func (br bRestrictions) toActual(c *context) {
 			}
 			c.appendErr(e)
 		}
-		if ok, err := template.CheckRestrContradiction(r, buf_key_restrs); !ok && err != nil {
+		if ok, err := template.CheckRestrContradiction(r, bufKeyRestrs); !ok && err != nil {
 			e := parseError{
 				append(br.nesting, "key_regexps", strconv.Itoa(i+1)).String(),
 				err.Error(),
@@ -452,7 +459,7 @@ func (br bRestrictions) toActual(c *context) {
 
 	}
 
-	p.Restrs = append(p.Restrs, append(buf_val_restrs, buf_key_restrs...)...)
+	p.Restrs = append(p.Restrs, append(bufValRestrs, bufKeyRestrs...)...)
 }
 
 // Mutates bConnection to actual template Connection-struct and inserts
@@ -464,7 +471,7 @@ func (br bRestrictions) toActual(c *context) {
 // toActual()-methods were executed), depending in which nesting context
 // this func were called
 func (bc bConnection) toActual(c *context) {
-	main_type := bc.nesting[len(bc.nesting)-5]
+	mainType := bc.nesting[len(bc.nesting)-5]
 	main := bc.nesting[len(bc.nesting)-4]
 	subj := bc.nesting[len(bc.nesting)-2]
 	edge := bc.BufEdge
@@ -472,14 +479,14 @@ func (bc bConnection) toActual(c *context) {
 	var m, s interface{}
 	var e *template.TEdge
 	var match bool
-	switch main_type {
+	switch mainType {
 	case "nodes":
-		main_type = "node"
+		mainType = "node"
 		m = c.node(main)
 		s = c.node(subj)
 		match = c.nodeConn(main, subj, edge) != nil
 	case "labels":
-		main_type = "label"
+		mainType = "label"
 		m = c.label(main)
 		s = c.label(subj)
 		match = c.labelConn(main, subj, edge) != nil
@@ -491,7 +498,7 @@ func (bc bConnection) toActual(c *context) {
 		err = true
 		e := parseError{
 			bc.nesting.String(),
-			fmt.Sprintf("%[1]s %[2]q has undefined subject %[1]q %[3]q to create connection", main_type, main, subj),
+			fmt.Sprintf("%[1]s %[2]q has undefined subject %[1]q %[3]q to create connection", mainType, main, subj),
 		}
 		c.appendErr(e)
 	}
@@ -499,7 +506,7 @@ func (bc bConnection) toActual(c *context) {
 		err = true
 		e := parseError{
 			bc.nesting.String(),
-			fmt.Sprintf("%s %q has undefined edge %q to create connection", main_type, main, bc.BufEdge),
+			fmt.Sprintf("%s %q has undefined edge %q to create connection", mainType, main, bc.BufEdge),
 		}
 		c.appendErr(e)
 	}
@@ -507,7 +514,7 @@ func (bc bConnection) toActual(c *context) {
 		err = true
 		e := parseError{
 			bc.nesting.String(),
-			fmt.Sprintf("there is already exists such %s-connection with %q main, edge - %q and subject - %q", main_type, main, edge, subj),
+			fmt.Sprintf("there is already exists such %s-connection with %q main, edge - %q and subject - %q", mainType, main, edge, subj),
 		}
 		c.appendErr(e)
 	}
@@ -531,7 +538,7 @@ func (bc bConnection) toActual(c *context) {
 	if !err {
 		// its necessary to not insert any Connection-struct within c if any error
 		// occurs cus further reusing of this struct may cause hard-to-search errors
-		switch main_type {
+		switch mainType {
 		case "node":
 			actual := &template.TConnection{
 				Main: m.(*template.TNode),
