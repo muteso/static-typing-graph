@@ -1,0 +1,5 @@
+# folder for vscode config-files
+/.vscode
+
+# folder for main.go-file for debugging
+/debug_main

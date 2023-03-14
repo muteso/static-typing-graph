@@ -1,0 +1,88 @@
+labels:
+  Creature:
+    properties:
+      name:
+        type: string
+        restrictions:
+          values:
+            - Jora
+            - Nina
+          regexps:
+            - ^[A-Z][a-z]+$
+  Human:
+    connections:
+      Animal:
+        - edge: OWNS
+          ratio: 
+            min: 0
+            max: -1
+  Animal:
+    connections:
+      Human:
+        - edge: ownedBy
+          ratio: 
+            min: 0
+            max: -1
+nodes:
+  Person:
+    labels: 
+      - Human
+      - Creature
+    properties:
+      birth:
+        type: datetime
+        restrictions:
+          values:
+            - 1111-11-11T11:11:11Z
+          regexps:
+            - 1111-11
+      merried:
+        type: bool
+        restrictions:
+          values:
+            - true
+      age:
+        type: float
+        restrictions:
+          values:
+            - 22.7
+          regexps:
+            - ^\d+\.\d$
+      money:
+        type: int
+        restrictions:
+          values:
+            - 34
+          regexps:
+            - ^\d\d$
+      things:
+        type: array-string
+        restrictions:
+          values:
+            - thing
+          regexps:
+            - ^other .+
+      adresses:
+        type: map-string-string
+        restrictions:
+          regexps:
+            - house .+
+          key_regexps:
+            - street .+
+    connections:
+      Person:
+        - edge: friend
+          ratio: 
+            min: 0
+            max: -1
+  Pet:
+    labels: 
+      - Animal
+      - Creature
+edges:
+  friend:
+    properties:
+      since:
+        type: datetime
+  OWNS:
+  ownedBy:
